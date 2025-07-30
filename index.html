@@ -56,10 +56,20 @@
       border-radius: 5px;
       cursor: pointer;
     }
-    textarea {
+    textarea, input[type="number"], input[type="text"] {
       width: 100%;
-      height: 100px;
       padding: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      text-align: center;
+      padding: 4px;
     }
   </style>
 </head>
@@ -83,7 +93,14 @@
       <div class="bar-container">
         <div class="bar" id="xpBar"></div>
       </div>
-      <p>XP: <span id="xp">0</span> | Gold: <span id="gold">0</span> | Level: <span id="level">1</span></p>
+      <p>XP: <span id="xp">0</span> | Level: <span id="level">1</span></p>
+    </div>
+
+    <div class="section">
+      <h3>Money Tracker (Real Life Gold)</h3>
+      <input type="number" id="moneyInput" placeholder="Enter your current amount" />
+      <button onclick="updateMoney()">Update</button>
+      <p>💰 Money: $<span id="money">0</span></p>
     </div>
 
     <div class="section">
@@ -98,19 +115,24 @@
       <textarea id="journalInput" placeholder="Write about your day..."></textarea>
       <button onclick="saveJournal()">Save Reflection</button>
     </div>
+
+    <div class="section">
+      <h3>📅 Year Calendar Log</h3>
+      <div id="calendar"></div>
+    </div>
   </main>
 
   <script>
     let xp = parseInt(localStorage.getItem('xp')) || 0;
-    let gold = parseInt(localStorage.getItem('gold')) || 0;
     let level = parseInt(localStorage.getItem('level')) || 1;
     let chosenClass = localStorage.getItem('class') || 'Scholar';
+    let money = parseFloat(localStorage.getItem('money')) || 0;
 
     function updateDisplay() {
       document.getElementById('xp').textContent = xp;
-      document.getElementById('gold').textContent = gold;
       document.getElementById('level').textContent = level;
       document.getElementById('chosenClass').textContent = chosenClass;
+      document.getElementById('money').textContent = money.toFixed(2);
       document.getElementById('xpBar').style.width = `${(xp % 100)}%`;
     }
 
@@ -125,19 +147,27 @@
         if (!li.classList.contains('done')) {
           li.classList.add('done');
           xp += 20;
-          gold += 5;
           if (xp >= level * 100) {
             level++;
             alert('Level up! 🌟');
           }
           localStorage.setItem('xp', xp);
-          localStorage.setItem('gold', gold);
           localStorage.setItem('level', level);
           updateDisplay();
+          markCalendar(new Date().toISOString().split('T')[0]);
         }
       };
       document.getElementById('taskList').appendChild(li);
       input.value = '';
+    }
+
+    function updateMoney() {
+      const value = parseFloat(document.getElementById('moneyInput').value);
+      if (!isNaN(value)) {
+        money = value;
+        localStorage.setItem('money', money);
+        updateDisplay();
+      }
     }
 
     function saveJournal() {
@@ -145,6 +175,41 @@
       const today = new Date().toISOString().split('T')[0];
       localStorage.setItem(`journal-${today}`, text);
       alert('Journal saved 📓');
+    }
+
+    function markCalendar(date) {
+      let completed = JSON.parse(localStorage.getItem('completedDates') || '{}');
+      completed[date] = true;
+      localStorage.setItem('completedDates', JSON.stringify(completed));
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const calendar = document.getElementById('calendar');
+      calendar.innerHTML = '';
+      let completed = JSON.parse(localStorage.getItem('completedDates') || '{}');
+      for (let m = 0; m < 12; m++) {
+        const month = new Date(year, m, 1);
+        const daysInMonth = new Date(year, m + 1, 0).getDate();
+        const table = document.createElement('table');
+        const caption = document.createElement('caption');
+        caption.textContent = month.toLocaleString('default', { month: 'long' });
+        table.appendChild(caption);
+        const tr = document.createElement('tr');
+        for (let d = 1; d <= daysInMonth; d++) {
+          const td = document.createElement('td');
+          const dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          td.textContent = d;
+          if (completed[dateStr]) {
+            td.style.background = '#a5d6a7';
+          }
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+        calendar.appendChild(table);
+      }
     }
 
     document.getElementById('classSelect').value = chosenClass;
@@ -155,6 +220,7 @@
     };
 
     updateDisplay();
+    renderCalendar();
   </script>
 </body>
 </html>
